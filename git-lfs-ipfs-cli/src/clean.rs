@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures::StreamExt;
-use ipfs_api::{response::AddResponse, IpfsApi};
 use std::io::Read;
+use skynet_rs::SkynetClient;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 /// Replace file contents with the raw IPFS block contents.
@@ -14,7 +14,7 @@ use tokio::io::{AsyncWrite, AsyncWriteExt};
 ///
 /// <https://github.com/git-lfs/git-lfs/blob/main/docs/extensions.md#clean>
 pub async fn clean<E: 'static + Send + Sync + std::error::Error>(
-    client: impl IpfsApi<Error = E>,
+    client: SkynetClient,
     input: impl Read + Send + Sync + 'static,
     mut output: impl AsyncWrite + AsyncWriteExt + Unpin,
 ) -> Result<()> {

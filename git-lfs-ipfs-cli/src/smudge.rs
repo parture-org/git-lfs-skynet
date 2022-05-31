@@ -1,8 +1,5 @@
 use anyhow::Result;
-use cid::Cid;
 use futures::stream::StreamExt;
-use ipfs_api::IpfsApi;
-use multihash::{Code, MultihashDigest, Sha2Digest, Sha2_256, StatefulHasher, U32};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 /// Verbatim from IPFS cli docs:
@@ -29,11 +26,11 @@ async fn sha256_hash_of_raw_block(
     Ok(hasher.finalize())
 }
 
-async fn cid_of_raw_block(input: impl AsyncRead + AsyncReadExt + Unpin) -> Result<Cid> {
-    let sha256_hash = sha256_hash_of_raw_block(input).await?;
-    let hash = Code::multihash_from_digest(&sha256_hash);
-    Ok(Cid::new_v0(hash.into()).unwrap())
-}
+// async fn cid_of_raw_block(input: impl AsyncRead + AsyncReadExt + Unpin) -> Result<Cid> {
+//     let sha256_hash = sha256_hash_of_raw_block(input).await?;
+//     let hash = Code::multihash_from_digest(&sha256_hash);
+//     Ok(Cid::new_v0(hash.into()).unwrap())
+// }
 
 /// Convert a file's raw IPFS block back into the file itself
 ///
@@ -41,18 +38,18 @@ async fn cid_of_raw_block(input: impl AsyncRead + AsyncReadExt + Unpin) -> Resul
 /// wants to get the file's original SHA-256 back.
 ///
 /// <https://github.com/git-lfs/git-lfs/blob/main/docs/extensions.md#smudge>
-pub async fn smudge<E: 'static + Send + Sync + std::error::Error>(
-    client: impl IpfsApi<Error = E>,
-    input: impl AsyncRead + AsyncReadExt + Unpin,
-    mut output: impl AsyncWrite + AsyncWriteExt + Unpin,
-) -> Result<()> {
-    let cid = cid_of_raw_block(input).await?;
-    let mut stream = client.cat(&format!("/ipfs/{}", cid));
-    while let Some(bytes) = stream.next().await.transpose()? {
-        output.write_all(&bytes).await?;
-    }
-    Ok(())
-}
+// pub async fn smudge<E: 'static + Send + Sync + std::error::Error>(
+//     client: impl IpfsApi<Error = E>,
+//     input: impl AsyncRead + AsyncReadExt + Unpin,
+//     mut output: impl AsyncWrite + AsyncWriteExt + Unpin,
+// ) -> Result<()> {
+//     let cid = cid_of_raw_block(input).await?;
+//     let mut stream = client.cat(&format!("/ipfs/{}", cid));
+//     while let Some(bytes) = stream.next().await.transpose()? {
+//         output.write_all(&bytes).await?;
+//     }
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
