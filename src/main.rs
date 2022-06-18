@@ -7,11 +7,19 @@ use skynet_rs::{SkynetClient, SkynetClientOptions};
 use structopt::StructOpt;
 use tokio::io::{stdin, stdout, BufReader};
 
+use log::LevelFilter;
+use log4rs::append::file::FileAppender;
+use log4rs::encode::pattern::PatternEncoder;
+use log4rs::config::{Appender, Config, Root};
+use crate::providers::StorJProvider;
+
 // use crate::{clean::clean, smudge::smudge};
 
 // mod clean;
 // mod smudge;
 mod transfer;
+mod provider;
+mod providers;
 
 #[derive(Debug, StructOpt)]
 #[structopt(author, about)]
@@ -38,14 +46,29 @@ enum GitLfsIpfs {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let portal_url = env::var("SKYNET_PORTAL_URL")
-        .ok()
-        .unwrap_or("https://skynetfree.net".to_string());
+    main_inner().await.map_err(|err| {
+        log::error!("an error occurred: {}", err);
+        err
+    })
+}
 
-    let client = SkynetClient::new(portal_url.as_str(), SkynetClientOptions{
-        api_key: env::var("SKYNET_API_KEY").ok(),
-        custom_user_agent: None
-    });
+async fn main_inner() -> Result<()> {
+    let logfile = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
+        .build("log/output.log")?;
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .build(Root::builder()
+            .appender("logfile")
+            .build(LevelFilter::Debug))?;
+
+    log4rs::init_config(config)?;
+
+    log::debug!("pwd: {}", env::current_dir().unwrap().display());
+
+    // todo: dynamic client choice here based on ENV var?
+    let client = StorJProvider::new_from_env()?;
 
     match GitLfsIpfs::from_args() {
         // GitLfsIpfs::Smudge { filename: _ } => smudge(client, stdin(), stdout()).await,
@@ -56,13 +79,9 @@ async fn main() -> Result<()> {
             // the input stream of events passed by git-lfs
             let input_event_stream = transfer::read_events(buffered_stdin);
 
-            // todo: thids was used for IPFS, but we will be downloading files
-            // to their proper paths, so this might be redundant
-            let download_folder = std::env::current_dir()?;
-
             // the output stream we are writing back to the console for git-lfs to read
             let output_event_stream =
-                transfer::transfer(client, input_event_stream, download_folder);
+                transfer::transfer(client, input_event_stream);
 
             futures_util::pin_mut!(output_event_stream);
 
@@ -70,7 +89,9 @@ async fn main() -> Result<()> {
                 if Event::AcknowledgeInit == output_event {
                     println!("{{ }}");
                 } else {
-                    println!("{}", serde_json::to_string(&output_event)?);
+                    let json = serde_json::to_string(&output_event)?;
+                    log::debug!("emitting event to stdout stream: {}", &json);
+                    println!("{}", json);
                 }
             }
             Ok(())

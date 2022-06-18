@@ -1,5 +1,5 @@
 [package]
-name = "git-lfs-skynet"
+name = "git-lfs-web3"
 version = "0.1.0"
 authors = ["Sameer Puri <crates@purisa.me>"]
 edition = "2018"
@@ -7,16 +7,11 @@ description = "A git-lfs custom transfer & extension that makes it easy to store
 readme = "../README.md"
 license = "MIT OR Apache-2.0"
 
-[badges]
-is-it-maintained-issue-resolution = { repository = "sameer/git-lfs-ipfs" }
-is-it-maintained-open-issues = { repository = "sameer/git-lfs-ipfs" }
-maintenance = { status = "passively-maintained" }
-
 [dependencies]
 anyhow = "1"
 serde_json = "1"
 #cid = { version = "0", default-features = false, features = ["std"] }
-git-lfs-spec = { path = "../git-lfs-spec", version = "0" }
+git-lfs-spec = { git = "https://github.com/sameer/git-lfs-ipfs" }
 structopt = "0.3"
 #multihash = { version = "0.14", features = ["sha2", "multihash-impl"], default-features = false }
 #ipfs-api = { version = "0.12", features = ["with-hyper-rustls"], default-features = false, git = "https://github.com/ferristseng/rust-ipfs-api.git" }
@@ -25,12 +20,21 @@ serde = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["io-util", "macros", "io-std", "rt-multi-thread", "rt"], default-features = false }
 async-stream = "0.3"
+async-trait = "0.1.56"
 futures-util = "0.3"
 hyper = "0.14"
 hyper-rustls = "0"
-skynet-rs = { git = "https://github.com/parture-org/skynet-rs", commit = "1af17149abc560952d4bbaaf1efb8a1ca1459e72" }
+skynet-rs = { git = "https://github.com/giraffekey/skynet-rs" }
 git2 = "0.13"
 base64 = "0.13.0"
+log = "0.4.17"
+log4rs = "1.1.1"
+isahc = "1.7.2"
+async-fs = "1.5.0"
+rust-s3 = "0.31.0"
+env-file-reader = "0.3.0"
+
+partage_common = {path = "../../lib/partage_common" }
 
 [dev-dependencies]
 pretty_assertions = "0"
