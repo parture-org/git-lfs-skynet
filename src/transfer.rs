@@ -5,6 +5,7 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 use git2::Config;
 
 use git_lfs_spec::transfer::custom::{self, Complete, Error, Event, Operation, Progress};
+use crate::providers::{SkynetProvider, StorJProvider, UploadStrategy};
 
 use crate::provider::StorageProvider;
 
@@ -23,7 +24,7 @@ pub fn read_events(
 const INTERNAL_SERVER_ERROR: i32 = 500;
 
 pub fn transfer(
-    client: impl StorageProvider + Sync,
+    client2: impl StorageProvider,
     input_event_stream: impl Stream<Item = Result<Event>>,
 ) -> impl Stream<Item = Result<Event>> {
     let mut init_opt = None;
@@ -52,10 +53,8 @@ pub fn transfer(
                 }
                 (Some(init), event) => {
                     match (event, &init.operation) {
-
-                        // download from skynet
                         (Event::Download(download), Operation::Download) => {
-                            yield client
+                            yield SkynetProvider::new_from_env(UploadStrategy::Client).unwrap()
                                 .download(&download)
                                 .await
                                 .map(|_| Event::Complete(
@@ -67,9 +66,8 @@ pub fn transfer(
                                 ))
                         }
 
-                        // upload to storj
                         (Event::Upload(upload), Operation::Upload) => {
-                            yield client
+                            yield SkynetProvider::new_from_env(UploadStrategy::Client).unwrap()
                                 .upload_if_needed(&upload)
                                 .await
                                 .map(|_| Event::Complete(

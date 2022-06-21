@@ -13,7 +13,6 @@ pub struct StorJProvider {
 }
 
 impl StorJProvider {
-    // todo: actually read stuff from env file
     pub fn new_from_env() -> Result<Self> {
         log::debug!("parsing storj env vars...");
 
@@ -54,7 +53,18 @@ impl Default for StorJProvider {
 
 #[async_trait]
 impl StorageProvider for StorJProvider {
-    async fn download(&self, obj: &Download) -> anyhow::Result<()> {
+    async fn download(&self, download: &Download) -> anyhow::Result<()> {
+        // todo: generate temp file
+        let mut async_output_file = tokio::fs::File::create("/tmp/")
+            .await
+            .expect("Unable to create file");
+
+        // Async variant with `tokio` or `async-std` features
+        let status_code = bucket.get_object_stream(
+            Self::object_path(&obj.object.oid),
+            &mut async_output_file
+        ).await?;
+
         todo!()
     }
 
