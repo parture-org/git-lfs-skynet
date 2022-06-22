@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use futures::{Stream, StreamExt};
-use std::{io::Write, path::Path};
+use std::{io::Write, path::Path, path::PathBuf};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 use git2::Config;
 
@@ -57,10 +57,10 @@ pub fn transfer(
                             yield client
                                 .download(&download)
                                 .await
-                                .map(|_| Event::Complete(
+                                .map(|path| Event::Complete(
                                     Complete {
                                         oid: download.object.oid.clone(),
-                                        result: None,
+                                        result: Some(custom::Result::Path(PathBuf::from(path))),
                                     }
                                     .into(),
                                 ))

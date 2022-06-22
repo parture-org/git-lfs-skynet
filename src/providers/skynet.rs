@@ -1,11 +1,12 @@
 use std::{env, io::Write, path::Path};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
-use skynet_rs::{SkynetClient, UploadOptions, DownloadOptions, MetadataOptions, SkynetClientOptions};
+use skynet_rs::{SkynetClient, UploadOptions, DownloadOptions, MetadataOptions, SkynetClientOptions, SkynetError};
 use isahc::*;
 use anyhow::{Context, Result};
 use git_lfs_spec::transfer::custom::{Download, Upload};
 use async_trait::async_trait;
 use git_lfs_spec::Object;
+use git_lfs_spec::transfer::custom;
 use crate::provider::StorageProvider;
 
 #[derive(Copy, Clone, Debug)]
@@ -125,52 +126,24 @@ impl SkynetProvider {
 
 #[async_trait]
 impl StorageProvider for SkynetProvider {
-    async fn download(&self, obj: &Download) -> Result<()> {
-        // let cid_result = crate::ipfs::sha256_to_cid(&download.object.oid);
-        // match cid_result {
-        //     Ok(cid) => {
-        //         let output_path = download_folder.as_ref().join(&download.object.oid);
-        //         let mut output = std::fs::File::create(&output_path)?;
-        //
-        //         let mut stream =
-        //             client.block_get(&format!("/ipfs/{}", cid));
-        //         let mut bytes_so_far = 0;
-        //         while let Some(res) = stream.next().await {
-        //             let bytes = res?;
-        //             output.write_all(&bytes)?;
-        //             bytes_so_far += bytes.len() as u64;
-        //                 yield Ok(Event::Progress(
-        //                     Progress {
-        //                         oid: download.object.oid.clone(),
-        //                         bytes_so_far,
-        //                         bytes_since_last: bytes.len() as u64,
-        //                     }
-        //                     .into()
-        //                 ));
-        //         }
-        //         yield Ok(Event::Complete(
-        //             Complete {
-        //                 oid: download.object.oid.clone(),
-        //                 result: Some(custom::Result::Path(output_path)),
-        //             }
-        //             .into(),
-        //         ));
-        //     }
-        //     Err(err) => {
-        //         yield Ok(Event::Complete(
-        //             Complete {
-        //                 oid: download.object.oid.clone(),
-        //                 result: Some(custom::Result::Error(Error {
-        //                     code: INTERNAL_SERVER_ERROR,
-        //                     message: err.to_string(),
-        //                 })),
-        //             }
-        //             .into(),
-        //         ))
-        //     },
-        // }
+    async fn download(&self, download: &Download) -> Result<String> {
+        match Self::get_skylink(&download.object.oid) {
+            Some(skylink) => {
+                let output_path = format!("/tmp/{}", &download.object.oid);
 
-        todo!()
+                self
+                    .client
+                    .download_file(&output_path, &skylink, DownloadOptions::default())
+                    .await
+                    .map(|_| output_path)
+                    .map_err(|skynet_err| anyhow::anyhow!("an error occurred in skynet-rs: {:#?}", skynet_err))
+            }
+
+            // no skylink found in mapping
+            None => {
+                Err(anyhow::anyhow!("no skylink found in .git/config mapping for {}", &download.object.oid))
+            }
+        }
     }
 
     async fn upload(&self, upload: &Upload) -> Result<()> {

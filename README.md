@@ -1,4 +1,4 @@
-# git-lfs-skynet
+# git-lfs-web3
 
 A [git-lfs](https://git-lfs.github.com/) custom transfer & extension that makes it easy to store large files on Sia Skynet.
 

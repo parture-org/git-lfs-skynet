@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait StorageProvider : Sync {
-    async fn download(&self, obj: &Download) -> anyhow::Result<()>;
+    async fn download(&self, obj: &Download) -> anyhow::Result<String>;
     async fn upload(&self, obj: &Upload) -> anyhow::Result<()>;
     async fn is_uploaded(&self, obj: &Upload) -> anyhow::Result<bool>;
 

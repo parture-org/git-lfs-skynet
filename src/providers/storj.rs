@@ -53,7 +53,7 @@ impl Default for StorJProvider {
 
 #[async_trait]
 impl StorageProvider for StorJProvider {
-    async fn download(&self, download: &Download) -> anyhow::Result<()> {
+    async fn download(&self, download: &Download) -> anyhow::Result<String> {
         // todo: generate temp file
         let mut async_output_file = tokio::fs::File::create("/tmp/")
             .await
