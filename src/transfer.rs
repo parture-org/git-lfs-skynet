@@ -24,7 +24,7 @@ pub fn read_events(
 const INTERNAL_SERVER_ERROR: i32 = 500;
 
 pub fn transfer(
-    client2: impl StorageProvider,
+    client: impl StorageProvider,
     input_event_stream: impl Stream<Item = Result<Event>>,
 ) -> impl Stream<Item = Result<Event>> {
     let mut init_opt = None;
@@ -54,7 +54,7 @@ pub fn transfer(
                 (Some(init), event) => {
                     match (event, &init.operation) {
                         (Event::Download(download), Operation::Download) => {
-                            yield SkynetProvider::new_from_env(UploadStrategy::Client).unwrap()
+                            yield client
                                 .download(&download)
                                 .await
                                 .map(|_| Event::Complete(
@@ -67,7 +67,7 @@ pub fn transfer(
                         }
 
                         (Event::Upload(upload), Operation::Upload) => {
-                            yield SkynetProvider::new_from_env(UploadStrategy::Client).unwrap()
+                            yield client
                                 .upload_if_needed(&upload)
                                 .await
                                 .map(|_| Event::Complete(

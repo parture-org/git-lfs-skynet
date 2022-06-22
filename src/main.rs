@@ -69,8 +69,8 @@ async fn main_inner() -> Result<()> {
     log::debug!("pwd: {}", env::current_dir().unwrap().display());
 
     // todo: dynamic client choice here based on ENV var?
-    let client = StorJProvider::new_from_env()?;
-    // let client = SkynetProvider::new_from_env(UploadStrategy::Client)?;
+    // let client = StorJProvider::new_from_env()?;
+    let client = SkynetProvider::new_from_env(UploadStrategy::Client)?;
 
     match GitLfsIpfs::from_args() {
         // GitLfsIpfs::Smudge { filename: _ } => smudge(client, stdin(), stdout()).await,

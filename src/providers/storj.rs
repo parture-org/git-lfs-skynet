@@ -60,8 +60,8 @@ impl StorageProvider for StorJProvider {
             .expect("Unable to create file");
 
         // Async variant with `tokio` or `async-std` features
-        let status_code = bucket.get_object_stream(
-            Self::object_path(&obj.object.oid),
+        let status_code = self.bucket.get_object_stream(
+            Self::object_path(&download.object.oid),
             &mut async_output_file
         ).await?;
 
