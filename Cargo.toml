@@ -19,13 +19,13 @@ hex = "0"
 serde = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["io-util", "macros", "io-std", "rt-multi-thread", "rt"], default-features = false }
-async-stream = "0.3"
+async-stream = "0.3.3"
 async-trait = "0.1.56"
 futures-util = "0.3"
 hyper = "0.14"
 hyper-rustls = "0"
-#skynet-rs = { git = "https://github.com/parture-org/skynet-rs", branch="tus" }
-skynet-rs = { path = "/Users/luukdewaalmalefijt/Code/skynet-rs" }
+skynet-rs = { git = "https://github.com/parture-org/skynet-rs", branch="tus" }
+#skynet-rs = { path = "/Users/luukdewaalmalefijt/Code/skynet-rs" }
 git2 = "0.13"
 base64 = "0.13.0"
 log = "0.4.17"
@@ -35,7 +35,7 @@ async-fs = "1.5.0"
 rust-s3 = "0.31.0"
 env-file-reader = "0.3.0"
 
-partage_common = {path = "../../lib/partage_common" }
+#partage_common = {path = "../../lib/partage_common" }
 
 [dev-dependencies]
 pretty_assertions = "0"

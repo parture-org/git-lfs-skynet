@@ -3,7 +3,6 @@ build:
 		--release \
 		--out-dir ./bin \
 		-Z unstable-options
-	mv ./bin/git-lfs-web3 ../../bin/
 
 # see https://github.com/sinbad/lfs-folderstore
 config:
