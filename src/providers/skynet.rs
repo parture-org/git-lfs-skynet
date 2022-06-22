@@ -59,6 +59,7 @@ impl SkynetProvider {
         Self::git_config()
             .get_string(Self::git_map_key(oid).as_str())
             .ok()
+            .map(|skylinkb64| format!("{:?}", base64::decode(skylinkb64).unwrap()))
     }
 
     // todo: return response
