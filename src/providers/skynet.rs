@@ -174,12 +174,12 @@ impl StorageProvider for SkynetProvider {
         let map_key = Self::git_map_key(oid);
 
         // mapping exists
-        if let Some(base64Skylink) = Self::get_skylink(oid) {
+        if let Some(skylink) = Self::get_skylink(oid) {
             log::debug!("found OID => skylink mapping in git config");
 
             // decode skylink
-            let skylink = base64::decode(base64Skylink).expect("failed to base64 decode skylink");
-            let skylink = String::from_utf8(skylink).expect("failed skylink parsing from git");
+            // let skylink = base64::decode(base64Skylink).expect("failed to base64 decode skylink");
+            // let skylink = String::from_utf8(skylink).expect("failed skylink parsing from git");
 
             log::debug!("checking if file for Skylink {} is still available...", &skylink);
 
