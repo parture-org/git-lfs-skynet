@@ -24,7 +24,7 @@ async-trait = "0.1.56"
 futures-util = "0.3"
 hyper = "0.14"
 hyper-rustls = "0"
-skynet-rs = { git = "https://github.com/parture-org/skynet-rs", branch="tus" }
+skynet-rs = { git = "https://github.com/parture-org/skynet-rs", branch="stream" }
 #skynet-rs = { path = "/Users/luukdewaalmalefijt/Code/skynet-rs" }
 git2 = "0.13"
 base64 = "0.13.0"

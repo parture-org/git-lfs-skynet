@@ -187,15 +187,6 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b25d992356d2eb0ed82172f5248873db5560c4721f564b13cb5193bda5e668e"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
-name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
@@ -261,12 +252,6 @@ name = "bumpalo"
 version = "3.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
-
-[[package]]
-name = "byteorder"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
@@ -2107,8 +2092,12 @@ checksum = "7bd3e3206899af3f8b12af284fafc038cc1dc2b41d1b89dd17297221c5d225de"
 [[package]]
 name = "skynet-rs"
 version = "0.1.0"
-source = "git+https://github.com/parture-org/skynet-rs?branch=tus#43969aba7b8d52f8e1bc2f2be50c76f8b2f915e2"
+source = "git+https://github.com/parture-org/skynet-rs?branch=stream#5bf4212b0b6fe49f7a64faf85c6689524a31093b"
 dependencies = [
+ "async-stream",
+ "async-trait",
+ "futures",
+ "futures-util",
  "hex",
  "http",
  "hyper",
@@ -2491,10 +2480,11 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "tus_async_client"
-version = "0.1.0"
-source = "git+https://github.com/parture-org/tus_async_client#f0bd6648dda2c66218dc67d0cc42f345ed22b0dd"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1749b728324263cfaaa46054a2ef872218c5ee3c9975e9176945855485463c42"
 dependencies = [
- "base64 0.10.1",
+ "base64 0.13.0",
  "reqwest",
 ]
 

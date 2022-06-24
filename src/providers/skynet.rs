@@ -157,69 +157,31 @@ impl StorageProvider for SkynetProvider {
         }
     }
 
-    // todo: move this impl to skynet-rs
     fn download_stream(self, download: Download) -> BoxedStream where Self: 'static {
         let stream = async_stream::stream! {
             match Self::get_skylink(&download.object.oid) {
                 Some(skylink) => {
                     let output_path = format!("/tmp/{}", &download.object.oid);
 
-                    let url = format!("https://siasky.net/{}", &skylink);
+                    let mut output_event_stream = self.client.download_file_stream(output_path, &skylink, DownloadOptions::default());
 
-                    println!("downloading from URL: {}", &url);
+                    futures_util::pin_mut!(output_event_stream);
 
-                    // https://gist.github.com/giuliano-oliveira/4d11d6b3bb003dba3a1b53f43d81b30d
+                    let mut last_downloaded = 0;
 
-                    // Reqwest setup
-                    let res = reqwest::Client::new()
-                        .get(&url)
-                        .send()
-                        .await;
+                    while let Some(downloaded) = output_event_stream.next().await.transpose().expect("stream error") {
+                        let since_last = downloaded - last_downloaded;
 
-                    if res.is_err() {
-                        yield Err(anyhow::anyhow!("Failed to GET from '{}'", &url))
+                        yield Ok(Event::Progress(Progress {
+                            oid: download.object.oid.clone(),
+                            bytes_so_far: downloaded,
+                            bytes_since_last: since_last
+                        }.into(),));
+
+                        last_downloaded = downloaded;
                     }
 
-                    else {
-                        let res = res.unwrap();
-
-                        // todo: or take from Download info?
-                        let total_size = res
-                            .content_length()
-                            .ok_or(anyhow::anyhow!("Failed to get content length from '{}'", &url))
-                            .unwrap();
-
-                        // download chunks
-                        let mut file = File::create(&output_path)
-                            .or(Err(anyhow::anyhow!("Failed to create file '{}'", &output_path)))
-                            .unwrap();
-
-                        let mut downloaded: u64 = 0;
-                        let mut stream = res.bytes_stream();
-                        let mut cont = true;
-
-                        while let Some(item) = stream.next().await {
-                            let chunk = item.or(Err(anyhow::anyhow!("Error while downloading file"))).unwrap();
-
-                            file
-                                .write_all(&chunk)
-                                .or(Err(anyhow::anyhow!("Error while writing to file")))
-                                .unwrap();
-
-                            let new = min(downloaded + (chunk.len() as u64), total_size);
-                            let since_last = new - downloaded;
-
-                            downloaded = new;
-
-                            yield Ok(Event::Progress(Progress {
-                                oid: download.object.oid.clone(),
-                                bytes_so_far: downloaded,
-                                bytes_since_last: since_last
-                            }.into(),))
-                        }
-
-                        // todo: yield error if expected file size doesnt match?
-                    }
+                    // todo: yield error if expected file size doesnt match?
                 }
 
                 // no skylink found in mapping
