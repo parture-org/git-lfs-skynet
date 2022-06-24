@@ -1,2 +1,4 @@
 **/target
 **/*.rs.bk
+.skynet.env
+/.skynet.env
