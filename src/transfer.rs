@@ -60,7 +60,7 @@ pub fn transfer(
                             //     .map(|cmpl| Event::Complete(cmpl.into()))
 
                             // the output stream we are writing back to the console for git-lfs to read
-                            let mut output_event_stream = client.download_stream(*download);
+                            let mut output_event_stream = client.clone().download_stream(*download);
 
                             while let Some(output_event) = output_event_stream.next().await.transpose().expect("stream error") {
                                 yield Ok(output_event)

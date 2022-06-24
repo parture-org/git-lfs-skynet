@@ -3,6 +3,7 @@ use std::{env, io::Write, path::Path};
 use std::fs::File;
 use skynet_rs::{SkynetClient, UploadOptions, DownloadOptions, MetadataOptions, SkynetClientOptions, SkynetError};
 use std::cmp::min;
+use std::sync::Arc;
 use anyhow::{Context, Result};
 // use async_stream::AsyncStream;
 use git_lfs_spec::transfer::custom::{Complete, Download, Event, Progress, Upload};
@@ -22,8 +23,9 @@ pub enum UploadStrategy {
     CURL,
 }
 
+#[derive(Clone)]
 pub struct SkynetProvider {
-    client: SkynetClient,
+    client: Arc<SkynetClient>,
     pub strategy: UploadStrategy,
 }
 
@@ -45,7 +47,7 @@ impl SkynetProvider {
         });
 
         Ok(Self {
-            client,
+            client: client.into(),
             strategy,
         })
     }
