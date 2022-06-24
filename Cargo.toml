@@ -35,6 +35,7 @@ async-fs = "1.5.0"
 rust-s3 = "0.31.0"
 env-file-reader = "0.3.0"
 tempfile = "3"
+reqwest = "0.11"
 
 #partage_common = {path = "../../lib/partage_common" }
 

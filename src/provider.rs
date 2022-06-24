@@ -1,12 +1,26 @@
 use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 use anyhow::{Context, Result};
+use async_stream::AsyncStream;
 use git_lfs_spec::transfer::custom::*;
 use async_trait::async_trait;
+use futures::{Stream, StreamExt};
 
+pub type BoxedStream = Pin<Box<Stream<Item = anyhow::Result<Event>>>>;
+
+// TODO: instead of clone, the provider shoujld probably wrapped in an Arc or something
 #[async_trait]
-pub trait StorageProvider : Sync {
-    async fn download(&self, obj: &Download) -> anyhow::Result<String>;
+pub trait StorageProvider : Sync + Sized + Send {
+    async fn download(&self, obj: &Download) -> anyhow::Result<Complete>;
+
+    fn download_stream(self, download: Download) -> BoxedStream where Self: 'static {
+        let stream = async_stream::stream! {
+            yield self.download(&download).await.map(|cmpl| Event::Complete(cmpl.into()))
+        };
+        stream.boxed()
+    }
+
     async fn upload(&self, obj: &Upload) -> anyhow::Result<()>;
     async fn is_uploaded(&self, obj: &Upload) -> anyhow::Result<bool>;
 

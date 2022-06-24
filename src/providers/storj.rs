@@ -1,5 +1,5 @@
 use std::path::Path;
-use git_lfs_spec::transfer::custom::{Download, Upload};
+use git_lfs_spec::transfer::custom::{Complete, Download, Upload};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use crate::provider::StorageProvider;
@@ -8,6 +8,7 @@ use s3::bucket::Bucket;
 use s3::creds::Credentials;
 use s3::region::Region;
 
+#[derive(Clone)]
 pub struct StorJProvider {
     pub bucket: Bucket
 }
@@ -53,7 +54,7 @@ impl Default for StorJProvider {
 
 #[async_trait]
 impl StorageProvider for StorJProvider {
-    async fn download(&self, download: &Download) -> anyhow::Result<String> {
+    async fn download(&self, download: &Download) -> anyhow::Result<Complete> {
         // todo: generate temp file
         let mut async_output_file = tokio::fs::File::create("/tmp/")
             .await

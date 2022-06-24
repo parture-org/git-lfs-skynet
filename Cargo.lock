@@ -774,6 +774,7 @@ dependencies = [
  "log",
  "log4rs",
  "pretty_assertions",
+ "reqwest",
  "rust-s3",
  "serde",
  "serde_json",

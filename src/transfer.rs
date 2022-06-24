@@ -24,7 +24,7 @@ pub fn read_events(
 const INTERNAL_SERVER_ERROR: i32 = 500;
 
 pub fn transfer(
-    client: impl StorageProvider,
+    client: impl StorageProvider + 'static,
     input_event_stream: impl Stream<Item = Result<Event>>,
 ) -> impl Stream<Item = Result<Event>> {
     let mut init_opt = None;
@@ -54,16 +54,17 @@ pub fn transfer(
                 (Some(init), event) => {
                     match (event, &init.operation) {
                         (Event::Download(download), Operation::Download) => {
-                            yield client
-                                .download(&download)
-                                .await
-                                .map(|path| Event::Complete(
-                                    Complete {
-                                        oid: download.object.oid.clone(),
-                                        result: Some(custom::Result::Path(PathBuf::from(path))),
-                                    }
-                                    .into(),
-                                ))
+                            // yield client
+                            //     .download(&download)
+                            //     .await
+                            //     .map(|cmpl| Event::Complete(cmpl.into()))
+
+                            // the output stream we are writing back to the console for git-lfs to read
+                            let mut output_event_stream = client.download_stream(*download);
+
+                            while let Some(output_event) = output_event_stream.next().await.transpose().expect("stream error") {
+                                yield Ok(output_event)
+                            }
                         }
 
                         (Event::Upload(upload), Operation::Upload) => {

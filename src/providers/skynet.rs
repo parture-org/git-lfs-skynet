@@ -1,23 +1,30 @@
 use std::{env, io::Write, path::Path};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt};
+// use tokio::io::{AsyncBufRead, AsyncBufReadExt};
+use std::fs::File;
 use skynet_rs::{SkynetClient, UploadOptions, DownloadOptions, MetadataOptions, SkynetClientOptions, SkynetError};
-use isahc::*;
+use std::cmp::min;
 use anyhow::{Context, Result};
-use git_lfs_spec::transfer::custom::{Download, Upload};
+// use async_stream::AsyncStream;
+use git_lfs_spec::transfer::custom::{Complete, Download, Event, Progress, Upload};
 use async_trait::async_trait;
+use futures::{Stream, StreamExt};
 use git_lfs_spec::Object;
 use git_lfs_spec::transfer::custom;
-use crate::provider::StorageProvider;
+use reqwest::Client;
+use futures_util::pin_mut;
+use isahc::{ReadResponseExt, RequestExt};
+
+use crate::provider::{BoxedStream, StorageProvider};
 
 #[derive(Copy, Clone, Debug)]
 pub enum UploadStrategy {
     Client,
-    CURL
+    CURL,
 }
 
 pub struct SkynetProvider {
     client: SkynetClient,
-    pub strategy: UploadStrategy
+    pub strategy: UploadStrategy,
 }
 
 impl SkynetProvider {
@@ -32,14 +39,14 @@ impl SkynetProvider {
 
         log::debug!("using Skynet portal: {}", &portal_url);
 
-        let client = SkynetClient::new(portal_url.as_str(), SkynetClientOptions{
+        let client = SkynetClient::new(portal_url.as_str(), SkynetClientOptions {
             api_key: env_variables.remove("SKYNET_API_KEY"),
-            custom_user_agent: None
+            custom_user_agent: None,
         });
 
         Ok(Self {
             client,
-            strategy
+            strategy,
         })
     }
 
@@ -51,7 +58,7 @@ impl SkynetProvider {
         let mut gitconf = Self::git_config();
         gitconf.set_str(
             Self::git_map_key(oid).as_str(),
-            base64::encode(skylink.replace("sia://", "")).as_str()
+            base64::encode(skylink.replace("sia://", "")).as_str(),
         ).expect("failed to write OID => Skylink mapping");
     }
 
@@ -59,7 +66,7 @@ impl SkynetProvider {
         Self::git_config()
             .get_string(Self::git_map_key(oid).as_str())
             .ok()
-            .map(|skylinkb64| format!("{:?}", base64::decode(skylinkb64).unwrap()))
+            .map(|skylinkb64| String::from_utf8(base64::decode(skylinkb64).unwrap()).expect("parse skylink bytes to string"))
     }
 
     // todo: return response
@@ -84,10 +91,8 @@ impl SkynetProvider {
         log::debug!("passed http call");
 
         if response.is_err() {
-            return Err(anyhow::anyhow!("There was an error trying to upload to skynet portal: {:?}", response))
-        }
-
-        else if let Ok(mut resp) = response {
+            return Err(anyhow::anyhow!("There was an error trying to upload to skynet portal: {:?}", response));
+        } else if let Ok(mut resp) = response {
             let skylink = resp.text()?;
 
             log::debug!("upload complete: {}", &skylink);
@@ -103,10 +108,10 @@ impl SkynetProvider {
         // upload file and get skylink
         let uploadres = self.client.upload_file(
             &upload.path,
-            UploadOptions{
+            UploadOptions {
                 // api_key: client.options.api_key.clone(),
                 ..Default::default()
-            }
+            },
         ).await;
 
         if let Ok(skylink) = &uploadres {
@@ -115,7 +120,7 @@ impl SkynetProvider {
             // save mapping
             Self::git_save_mapping(&upload.object.oid, skylink);
 
-            return Ok(())
+            return Ok(());
         }
 
         // error
@@ -127,7 +132,7 @@ impl SkynetProvider {
 
 #[async_trait]
 impl StorageProvider for SkynetProvider {
-    async fn download(&self, download: &Download) -> Result<String> {
+    async fn download(&self, download: &Download) -> Result<Complete> {
         match Self::get_skylink(&download.object.oid) {
             Some(skylink) => {
                 let output_path = format!("/tmp/{}", &download.object.oid);
@@ -136,7 +141,10 @@ impl StorageProvider for SkynetProvider {
                     .client
                     .download_file(&output_path, &skylink, DownloadOptions::default())
                     .await
-                    .map(|_| output_path)
+                    .map(|_| Complete{
+                        oid: download.object.oid.clone(),
+                        result: Some(custom::Result::Path(output_path.into()))
+                    })
                     .map_err(|skynet_err| anyhow::anyhow!("an error occurred in skynet-rs: {:#?}", skynet_err))
             }
 
@@ -145,6 +153,81 @@ impl StorageProvider for SkynetProvider {
                 Err(anyhow::anyhow!("no skylink found in .git/config mapping for {}", &download.object.oid))
             }
         }
+    }
+
+    // todo: move this impl to skynet-rs
+    fn download_stream(self, download: Download) -> BoxedStream where Self: 'static {
+        let stream = async_stream::stream! {
+            match Self::get_skylink(&download.object.oid) {
+                Some(skylink) => {
+                    let output_path = format!("/tmp/{}", &download.object.oid);
+
+                    let url = format!("https://siasky.net/{}", &skylink);
+
+                    println!("downloading from URL: {}", &url);
+
+                    // https://gist.github.com/giuliano-oliveira/4d11d6b3bb003dba3a1b53f43d81b30d
+
+                    // Reqwest setup
+                    let res = reqwest::Client::new()
+                        .get(&url)
+                        .send()
+                        .await;
+
+                    if res.is_err() {
+                        yield Err(anyhow::anyhow!("Failed to GET from '{}'", &url))
+                    }
+
+                    else {
+                        let res = res.unwrap();
+
+                        // todo: or take from Download info?
+                        let total_size = res
+                            .content_length()
+                            .ok_or(anyhow::anyhow!("Failed to get content length from '{}'", &url))
+                            .unwrap();
+
+                        // download chunks
+                        let mut file = File::create(&output_path)
+                            .or(Err(anyhow::anyhow!("Failed to create file '{}'", &output_path)))
+                            .unwrap();
+
+                        let mut downloaded: u64 = 0;
+                        let mut stream = res.bytes_stream();
+                        let mut cont = true;
+
+                        while let Some(item) = stream.next().await {
+                            let chunk = item.or(Err(anyhow::anyhow!("Error while downloading file"))).unwrap();
+
+                            file
+                                .write_all(&chunk)
+                                .or(Err(anyhow::anyhow!("Error while writing to file")))
+                                .unwrap();
+
+                            let new = min(downloaded + (chunk.len() as u64), total_size);
+                            let since_last = new - downloaded;
+
+                            downloaded = new;
+
+                            yield Ok(Event::Progress(Progress {
+                                oid: download.object.oid.clone(),
+                                bytes_so_far: downloaded,
+                                bytes_since_last: since_last
+                            }.into(),))
+                        }
+
+                        // todo: yield error if expected file size doesnt match?
+                    }
+                }
+
+                // no skylink found in mapping
+                None => {
+                    yield Err(anyhow::anyhow!("no skylink found in .git/config mapping for {}", &download.object.oid))
+                }
+            }
+        };
+
+        stream.boxed()
     }
 
     async fn upload(&self, upload: &Upload) -> Result<()> {
@@ -177,15 +260,11 @@ impl StorageProvider for SkynetProvider {
         if let Some(skylink) = Self::get_skylink(oid) {
             log::debug!("found OID => skylink mapping in git config");
 
-            // decode skylink
-            // let skylink = base64::decode(base64Skylink).expect("failed to base64 decode skylink");
-            // let skylink = String::from_utf8(skylink).expect("failed skylink parsing from git");
-
-            log::debug!("checking if file for Skylink {} is still available...", &skylink);
+            // log::debug!("checking if file for Skylink {} is still available...", &skylink);
 
             // check if file is still available
             if let Ok(metadata) = self.client.get_metadata(skylink.as_str(), MetadataOptions::default()).await {
-                return Ok(true)
+                return Ok(true);
             }
 
             // unset mapping
@@ -211,8 +290,39 @@ async fn save_skylink_mapping() {
     // save mapping
     gitconf.set_str(
         format!("lfs.customtransfer.skynet.mapping.testoid").as_str(),
-        "testskylink"
+        "testskylink",
     ).expect("failed to write OID => Skylink mapping");
+}
+
+#[tokio::test]
+async fn stream_download() {
+    let oid = "6f1eb46bfea22b6facfb12c583e61f699232cbed05d4f05a9cb314f634e88d9d".to_string();
+
+    let client = SkynetProvider::new_from_env(UploadStrategy::Client).unwrap();
+
+    // save skylink mapping
+    SkynetProvider::git_save_mapping(&oid, &"AABC5fIelZsChCGs-fSBRVc5n2BoHc-LAmehPlPRBjIV9w".to_string());
+
+    // the output stream we are writing back to the console for git-lfs to read
+    let mut output_event_stream = client.download_stream(Download {
+        object: Object {
+            oid: oid,
+            size: 0
+        }
+    });
+
+    // futures_util::pin_mut!(output_event_stream);
+
+    let mut last_event = None;
+
+    while let Some(output_event) = output_event_stream.next().await.transpose().expect("stream error") {
+        dbg!(&output_event);
+
+        last_event = Some(output_event);
+    }
+
+    // todo check file size
+    // assert_eq!();
 }
 
 #[tokio::test]
@@ -223,9 +333,9 @@ async fn test_isahc_upload() {
             object:
             Object {
                 oid: "67da1154a858aa2d89f5201246f6d4b43a0a4eb55011136e993728f0daf8703e".to_string(),
-                size: 0
+                size: 0,
             },
-            path: Default::default()
+            path: Default::default(),
         })
         .await
         .is_ok())

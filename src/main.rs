@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 use std::env;
 use anyhow::Result;
 use futures::StreamExt;
