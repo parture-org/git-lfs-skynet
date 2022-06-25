@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
 async fn main_inner() -> Result<()> {
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
-        .build("log/output.log")?;
+        .build("log/git-lfs-web.log")?;
 
     let config = Config::builder()
         .appender(Appender::builder().build("logfile", Box::new(logfile)))

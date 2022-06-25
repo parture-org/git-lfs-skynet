@@ -162,8 +162,15 @@ impl StorageProvider for SkynetProvider {
             match Self::get_skylink(&download.object.oid) {
                 Some(skylink) => {
                     let output_path = format!("/tmp/{}", &download.object.oid);
+                    std::fs::remove_file(&output_path);
 
-                    let mut output_event_stream = self.client.download_file_stream(output_path.clone(), &skylink, DownloadOptions::default());
+                    let mut output_event_stream = self
+                        .client
+                        .download_file_stream(
+                            output_path.clone(),
+                            &skylink,
+                            DownloadOptions::default()
+                        );
 
                     futures_util::pin_mut!(output_event_stream);
 
