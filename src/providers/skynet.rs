@@ -163,7 +163,7 @@ impl StorageProvider for SkynetProvider {
                 Some(skylink) => {
                     let output_path = format!("/tmp/{}", &download.object.oid);
 
-                    let mut output_event_stream = self.client.download_file_stream(output_path, &skylink, DownloadOptions::default());
+                    let mut output_event_stream = self.client.download_file_stream(output_path.clone(), &skylink, DownloadOptions::default());
 
                     futures_util::pin_mut!(output_event_stream);
 
@@ -185,7 +185,7 @@ impl StorageProvider for SkynetProvider {
                     yield Ok(Event::Complete(
                         Complete {
                             oid: download.object.oid.clone(),
-                            result: None,
+                            result: Some(custom::Result::Path(output_path.into())),
                         }
                         .into(),
                     ))
