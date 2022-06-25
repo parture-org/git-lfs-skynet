@@ -182,6 +182,13 @@ impl StorageProvider for SkynetProvider {
                     }
 
                     // todo: yield error if expected file size doesnt match?
+                    yield Ok(Event::Complete(
+                        Complete {
+                            oid: download.object.oid.clone(),
+                            result: None,
+                        }
+                        .into(),
+                    ))
                 }
 
                 // no skylink found in mapping
