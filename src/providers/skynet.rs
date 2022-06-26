@@ -31,23 +31,8 @@ pub struct SkynetProvider {
 
 impl SkynetProvider {
     pub fn new_from_env(strategy: UploadStrategy) -> Result<Self> {
-        let mut env_variables
-            = env_file_reader::read_file(".skynet.env")?;
-
-        log::debug!("skynet vars: {:#?}", &env_variables);
-
-        let portal_url = env_variables.remove("SKYNET_PORTAL_URL")
-            .unwrap_or("https://skynetfree.net".to_string());
-
-        log::debug!("using Skynet portal: {}", &portal_url);
-
-        let client = SkynetClient::new(portal_url.as_str(), SkynetClientOptions {
-            api_key: env_variables.remove("SKYNET_API_KEY"),
-            custom_user_agent: None,
-        });
-
         Ok(Self {
-            client: client.into(),
+            client: SkynetClient::new_from_env().into(),
             strategy,
         })
     }
@@ -291,16 +276,20 @@ async fn stream_download() {
 
     // futures_util::pin_mut!(output_event_stream);
 
-    let mut last_event = None;
+    let mut bytes_downloaded = 0;
 
     while let Some(output_event) = output_event_stream.next().await.transpose().expect("stream error") {
         dbg!(&output_event);
 
-        last_event = Some(output_event);
+        match output_event {
+            Event::Progress(prog) => {
+                bytes_downloaded = prog.bytes_so_far;
+            }
+            _ => {}
+        }
     }
 
-    // todo check file size
-    // assert_eq!();
+    assert_eq!(11_878_400, bytes_downloaded);
 }
 
 #[tokio::test]

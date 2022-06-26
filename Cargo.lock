@@ -2092,16 +2092,18 @@ checksum = "7bd3e3206899af3f8b12af284fafc038cc1dc2b41d1b89dd17297221c5d225de"
 [[package]]
 name = "skynet-rs"
 version = "0.1.0"
-source = "git+https://github.com/parture-org/skynet-rs?branch=stream#e366373d2f343d043600d1b7e463b0762ad6216e"
+source = "git+https://github.com/parture-org/skynet-rs?branch=stream#1393256954737568200bbf43589e101514aa98ff"
 dependencies = [
  "async-stream",
  "async-trait",
+ "env-file-reader",
  "futures",
  "futures-util",
  "hex",
  "http",
  "hyper",
  "hyper-tls",
+ "log",
  "mime",
  "mime_guess",
  "rand 0.8.5",
