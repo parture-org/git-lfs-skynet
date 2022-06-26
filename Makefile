@@ -1,4 +1,4 @@
-GIT_LFS_CONFIG=git config --file .skynetlfsconfig --replace-all
+GIT_LFS_CONFIG=git config --replace-all
 
 build:
 	cargo build \
