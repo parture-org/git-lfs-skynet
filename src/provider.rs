@@ -53,7 +53,8 @@ pub trait StorageProvider : Sync + Sized + Send + Clone {
     }
 
     fn git_config() -> git2::Config {
-        git2::Config::open(&Path::new(".git/config"))
+        // todo: make configurable.. env var?
+        git2::Config::open(&Path::new(".lfsconfig"))
             .expect("failed to open git config file")
     }
 }

@@ -1,3 +1,5 @@
+GIT_LFS_CONFIG=git config --file .lfsconfig --replace-all
+
 build:
 	cargo build \
 		--release \
@@ -6,9 +8,9 @@ build:
 
 # see https://github.com/sinbad/lfs-folderstore
 config:
-	git config --replace-all lfs.customtransfer.skynet.path ${shell pwd}/bin/git-lfs-web3
-	git config --replace-all lfs.customtransfer.skynet.args "transfer"
-	git config --replace-all lfs.customtransfer.skynet.concurrent false
-	git config --replace-all lfs.concurrenttransfers 2
-	git config --replace-all lfs.standalonetransferagent skynet
-	git config --replace-all lfs.transfer.maxretries 8
+	$(GIT_LFS_CONFIG) lfs.customtransfer.skynet.path ./bin/git-lfs-web3
+	$(GIT_LFS_CONFIG) lfs.customtransfer.skynet.args "transfer"
+	$(GIT_LFS_CONFIG) lfs.customtransfer.skynet.concurrent false
+	$(GIT_LFS_CONFIG) lfs.concurrenttransfers 2
+	$(GIT_LFS_CONFIG) lfs.standalonetransferagent skynet
+	$(GIT_LFS_CONFIG) lfs.transfer.maxretries 8
