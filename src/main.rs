@@ -1,7 +1,7 @@
 #![feature(let_chains)]
 
 use std::env;
-use anyhow::Result;
+ use anyhow::{Context, Result};
 use futures::StreamExt;
 use git_lfs_spec::transfer::custom::Event;
 use std::path::PathBuf;
@@ -48,31 +48,36 @@ enum GitLfsIpfs {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     main_inner().await.map_err(|err| {
         log::error!("an error occurred: {}", err);
         err
     })
 }
 
-async fn main_inner() -> Result<()> {
+async fn main_inner() -> anyhow::Result<()> {
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
-        .build("log/git-lfs-web.log")?;
+        .build("log/git-lfs-web.log")
+        .context("init log file")?;
 
     let config = Config::builder()
         .appender(Appender::builder().build("logfile", Box::new(logfile)))
         .build(Root::builder()
             .appender("logfile")
-            .build(LevelFilter::Debug))?;
+            .build(LevelFilter::Debug))
+        .context("build config")?;
 
-    log4rs::init_config(config)?;
+    log4rs::init_config(config)
+        .context("init config")?;
 
     log::debug!("pwd: {}", env::current_dir().unwrap().display());
 
     // todo: dynamic client choice here based on ENV var?
-    // let client = StorJProvider::new_from_env()?;
-    let client = SkynetProvider::new_from_env(UploadStrategy::Client)?;
+    let client = StorJProvider::new_from_env()
+        .context("init StorJProvider")?;
+
+    // let client = SkynetProvider::new_from_env(UploadStrategy::Client)?;
 
     match GitLfsIpfs::from_args() {
         // GitLfsIpfs::Smudge { filename: _ } => smudge(client, stdin(), stdout()).await,
@@ -89,11 +94,12 @@ async fn main_inner() -> Result<()> {
 
             futures_util::pin_mut!(output_event_stream);
 
-            while let Some(output_event) = output_event_stream.next().await.transpose()? {
+            while let Some(output_event) = output_event_stream.next().await.transpose().context("iterating output event stream")? {
                 if Event::AcknowledgeInit == output_event {
                     println!("{{ }}");
                 } else {
-                    let json = serde_json::to_string(&output_event)?;
+                    let json = serde_json::to_string(&output_event)
+                        .context("serializing output event")?;
                     log::debug!("emitting event to stdout stream: {}", &json);
                     println!("{}", json);
                 }

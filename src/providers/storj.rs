@@ -18,7 +18,8 @@ impl StorJProvider {
         log::debug!("parsing storj env vars...");
 
         let mut env_variables
-            = env_file_reader::read_file(".storj.env")?;
+            = env_file_reader::read_file(".storj.env")
+                .context("reading .storj.env file")?;
 
         log::debug!("storj vars: {:#?}", &env_variables);
 
@@ -77,12 +78,13 @@ impl StorageProvider for StorJProvider {
 
         log::debug!("uploading {}...", &upload.path.display());
 
-        let mut file = tokio::fs::File::open(upload.path.clone()).await?;
+        let mut file = tokio::fs::File::open(upload.path.clone()).await.context("opening File to upload")?;
 
         let status_code = self
             .bucket
             .put_object_stream(&mut file, objpath)
-            .await?;
+            .await
+            .context("uploading object")?;
 
         if status_code < 300 {
             log::debug!("upload complete: {}", &oid);
@@ -94,12 +96,13 @@ impl StorageProvider for StorJProvider {
         Err(anyhow::anyhow!("There was an error trying to upload to storj portal: {:?}", status_code))
     }
 
-    async fn is_uploaded(&self, obj: &Upload) -> Result<bool> {
+    async fn is_uploaded(&self, obj: &Upload) -> anyhow::Result<bool> {
         // check bucket to see whether file exists and length is the same
         let (head_object_result, code) = self
             .bucket
             .head_object(StorJProvider::object_path(&obj.object.oid))
-            .await?;
+            .await
+            .context("retrieving HEAD object info")?;
 
         // todo: check file len
         // head_object_result.content_length == Some(upload.object.len)
